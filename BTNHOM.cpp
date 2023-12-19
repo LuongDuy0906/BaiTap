@@ -1,205 +1,210 @@
 #include <iostream>
-#include <iomanip>
+#include <ctime>//ham time()
+#include <cstdlib>// ham srand(), rand()
 #include <string>
-#include <vector>
+#include <unordered_map>//ham unordered_map()
 
 using namespace std;
 
-class User {
-private:
-    string username;
-    string password;
-    string email;
-    int birthYear;
-
-public:
-    User(const string& uname, const string& pwd, const string& mail, int year)
-        : username(uname), password(pwd), email(mail), birthYear(year) {}
-
-    const string& getUsername() const {
-        return username;
-    }
-
-    const string& getEmail() const {
-        return email;
-    }
-
-    int getBirthYear() const {
-        return birthYear;
-    }
-
-    // Function to display user information (excluding password)
-    void displayUserInfo() const {
-        cout << left << setw(20) << "| " + username
-                  << setw(30) << "| " + email
-                  << setw(15) << "| " + to_string(birthYear) + " |" << endl;
-    }
-
-    bool checkPassword(const string& pwd) const {
-        return password == pwd;
-    }
-
-    // Function to change user password
-    void changePassword(const string& newPassword) {
-        password = newPassword;
-    }
+// khoi tao lop nguoi choi
+class Player {
+	private:
+	    string username;
+	
+	public:
+	    Player(const string& name) : username(name) {}
+	
+	    const string& getUsername() const {
+	        return username;
+	    }
+	
+	    virtual int getChoice() const = 0;
+	    virtual ~Player() {}
 };
 
-class AuthenticationSystem {
-private:
-    vector<User> users;
+// khoi tao lop ngui choi(player) 
+class HumanPlayer : public Player {
+	public:
+	    HumanPlayer(const string& name) : Player(name) {}
+		
+		//ham lua chon cua nguoi choi
+	    int getChoice() const override {
+	        int choice;
+	        do {
+	            cout << getUsername() << ", Choice: 1 (Scissor), 2 (Rock), 3 (Paper): ";
+	            cin >> choice;
+	
+	            if (choice < 1 || choice > 3) {
+	                cout << "Invalid choice! Please choose again." << endl;
+	            }
+	
+	        } while (choice < 1 || choice > 3);
+	
+	        return choice;
+	    }
+};
 
-public:
-    bool registerUser() {
-        string username, password, email;
-        int birthYear;
+//khoi tao lop nguoi choi(system)
+class ComputerPlayer : public Player {
+	public:
+	    ComputerPlayer() : Player("System") {}
+	
+	    int getChoice() const override {
+	        return rand() % 3 + 1;  // Chon ngau nhien 1, 2 hoac 3
+	    }
+};
 
-        // Input username
-        cout << "Enter username: ";
-        cin >> username;
+// khoi tao lop quan li tai khoan nguoi choi
+class PlayerManager {
+	private:
+	    unordered_map<string, string> playerCredentials;// bang bam lu tru thong tin nguoi choi(player)
+	    unordered_map<string, Player*> players;//bang bam lu tru danh sach nguoi choi(player)
+	
+	public:
+		//ham huy nguoi choi(system)
+	    ~PlayerManager() {
+	        for (auto& pair : players) {
+	            delete pair.second;
+	        }
+	    }
+	
+		//ham dang nhap
+	    Player* login() {
+	        string username;
+	        string password;
+	
+	        cout << "Player name: ";
+	        cin >> username;
+	        cout << "Password: ";
+	        cin >> password;
+	
+	        auto it = players.find(username);//t dong tim ten nguoi choi(player)
+	        if (it != players.end() && playerCredentials[username] == password) {
+	            cout << "Sign in success for: " << username << endl;
+	            return it->second;
+	        } else {
+	            cout << "Player name or password incorrect." << endl;
+	            return nullptr;
+	        }
+	    }
+	
+		//ham dang ki
+	    bool registerPlayer() {
+	        string username;
+	        string password;
+	
+	        cout << "Player name: ";
+	        cin >> username;
+	        cout << "Passwword: ";
+	    	cin >> password;
+	
+	        auto it = players.find(username);
+	        if (it != players.end()) {
+	            cout << "Player has already create, sign up failed." << endl;
+	            return false;
+	        } else {
+	            cout << "Sign up success for: " << username << endl;
+	            playerCredentials[username] = password;
+	
+	            // Tao nguoi choi moi va them vao danh sach
+	            Player* newPlayer = new HumanPlayer(username);
+	            players[username] = newPlayer;
+	
+	            return true;
+	        }
+	    }
+	
+		//ham hien thi cac lua chon
+	    void showMenu() {
+	        cout << "Choice:" << endl;
+	        cout << "1. Sign Up" << endl;
+	        cout << "2. Sign In" << endl;
+	        cout << "3. Exit" << endl;
+	    }
+};
 
-        // Check if the username is already taken
-        for (const User& user : users) {
-            if (user.getUsername() == username) {
-                cout << "Username is already taken. Please choose another one." << endl;
-                return false;
-            }
-        }
-
-        // Input email
-        cout << "Enter email: ";
-        cin >> email;
-
-        // Input birth year
-        cout << "Enter birth year: ";
-        cin >> birthYear;
-
-        // Input password
-        cout << "Enter password: ";
-        cin >> password;
-
-        // If not taken, create a new user and add it to the vector
-        users.emplace_back(username, password, email, birthYear);
-        cout << "Registration successful for user: " << username << endl;
-        return true;
-    }
-
-    bool loginUser() {
-        string username, password;
-
-        // Input username
-        cout << "Enter username: ";
-        cin >> username;
-
-        // Find the user with the given username
-        for (const User& user : users) {
-            if (user.getUsername() == username) {
-                // Input password
-                cout << "Enter password: ";
-               	cin >> password;
-
-                // Check if the entered password matches the user's password
-                if (user.checkPassword(password)) {
-                    cout << "Login successful. Welcome, " << username << "!" << endl;
-                    return true;
-                } else {
-                    cout << "Incorrect password. Please try again." << endl;
-                    return false;
-                }
-            }
-        }
-
-        // If the username is not found
-        cout << "User not found. Please check your username." << endl;
-        return false;
-    }
-
-  	void displayUserList() const {
-        // Print table header with border
-        cout << setw(70) << setfill('-') << "-" << setfill(' ') << endl;
-        cout << left << setw(20) << "| Username"
-                  << setw(30) << "| Email"
-                  << setw(15) << "| Birth Year |" << endl;
-        cout << setw(70) << setfill('-') << "-" << setfill(' ') << endl;
-
-        // Print user information
-        for (const User& user : users) {
-            user.displayUserInfo();
-        }
-
-        // Print table footer with border
-        cout << setw(70) << setfill('-') << "-" << setfill(' ') << endl;
-    }
-    
-    // Function to change user password
-    void changeUserPassword() {
-        string username, currentPassword, newPassword;
-
-        // Input username
-        cout << "Enter username: ";
-        cin >> username;
-
-        // Find the user with the given username
-        for (User& user : users) {
-            if (user.getUsername() == username) {
-                // Input current password
-                cout << "Enter current password: ";
-                cin >> currentPassword;
-
-                // Check if the entered current password matches the user's password
-                if (user.checkPassword(currentPassword)) {
-                    // Input new password
-                    cout << "Enter new password: ";
-                    cin >> newPassword;
-
-                    // Change user password
-                    user.changePassword(newPassword);
-                    cout << "Password changed successfully for user: " << username << std::endl;
-                    return;
-                } else {
-                    cout << "Incorrect current password. Password change failed." << std::endl;
-                    return;
-                }
-            }
-        }
-
-        // If the username is not found
-        cout << "User not found. Please check your username." << endl;
-    }
+//khoi tao lop tro choi
+class Game {
+	private:
+	    int winCountPlayer1;//so lan nguoi choi(player) thang
+	    int winCountPlayer2;//so lan nguoi choi(system) thang
+	
+	public:
+	    Game() : winCountPlayer1(0), winCountPlayer2(0) {}
+		
+		//ham hoat dong cua tro choi
+	    void play(Player* player1, Player* player2) {
+	        int choice1 = player1->getChoice();
+	        int choice2 = player2->getChoice();
+	
+	        cout << "Player choice: " << choice1 << endl;
+	       	cout << "System choice: " << choice2 << endl;
+	
+	        if (choice1 == choice2) {
+	            cout << "Draw!" << endl;
+	        } else if ((choice1 == 1 && choice2 == 3) ||
+	                   (choice1 == 2 && choice2 == 1) ||
+	                   (choice1 == 3 && choice2 == 2)) {
+	            cout << "Player Win!" << endl;
+	            ++winCountPlayer1;
+	        } else {
+	            cout << "System Win!" << endl;
+	            ++winCountPlayer2;
+	        }
+	    }
+	
+		//ham in ket qua
+	    void printSummary() const {
+	        cout << "Result:" << endl;
+	        cout << "Player win " << winCountPlayer1 << " time." << endl;
+	        cout << "System win " << winCountPlayer2 << " time." << endl;
+	    }
 };
 
 int main() {
-    AuthenticationSystem authSystem;
-    int choice;
+    srand(static_cast<unsigned int>(time(nullptr)));
 
-    do {
-        // Display menu
-        cout << "Menu:" << endl;
-        cout << "1. Register\n2. Login\n3. Display User List\n4. Change Password\n5. Exit\n";
-        cout << "Enter your choice: ";
+    PlayerManager playerManager;
+    Game game;
+
+    bool exitProgram = false;
+    while (!exitProgram) {
+        playerManager.showMenu();
+        int choice;
+        
+        //lua chun
+        cout << "Type your choice: ";
         cin >> choice;
 
+        Player* player1 = nullptr;
         switch (choice) {
             case 1:
-                authSystem.registerUser();
+                playerManager.registerPlayer();
                 break;
             case 2:
-                authSystem.loginUser();
+                player1 = playerManager.login();
+                if (player1 != nullptr) {
+                    Player* player2 = new ComputerPlayer();
+                    for (int i = 0; i < 3; ++i) {
+                        cout << "Game " << i + 1 << endl;
+                        game.play(player1, player2);
+                        cout << "----------------------------------------" << endl;
+                    }
+                    
+                    game.printSummary();
+                    
+                    //bao ton dung luong
+                    delete player2;
+                }
                 break;
             case 3:
-                authSystem.displayUserList();
-                break;
-            case 4:
-                authSystem.changeUserPassword();
-                break;
-            case 5:
-                cout << "Exiting program. Goodbye!" << endl;
+                exitProgram = true;
                 break;
             default:
-                cout << "Invalid choice. Please try again." << endl;
+                cout << "Invalid choice! Please choose again." << endl;
         }
-
-    } while (choice != 5);
+    }
 
     return 0;
 }
+
